@@ -140,14 +140,14 @@ def process_wallet(seed):
     try:
         BTC_address = bip44_BTC_seed_to_address(seed)
         BTC_balance = check_BTC_balance(BTC_address)
-
+         # Define o valor mínimo desejado para o saldo em BTC
+        min_balance = 0.1  # ou qualquer outro valor desejado, por exemplo, 0.00001
+        logging.info("(!) Wallet with balance found!")
         logging.info(f"Seed: {seed}")
         logging.info(f"BTC address: {BTC_address}")
         logging.info(f"BTC balance: {BTC_balance} BTC")
         logging.info("")
-
-        if BTC_balance > 0:
-            logging.info("(!) Wallet with balance found!")
+        if BTC_balance > min_balance:
             write_to_file(seed, BTC_address, BTC_balance)
 
     except Exception as e:
