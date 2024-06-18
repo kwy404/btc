@@ -14,11 +14,13 @@ from bip_utils import (
     Bip44Changes,
     Bip39WordsNum,
 )
+from concurrent.futures import ProcessPoolExecutor, as_completed
 
 # Constants
 LOG_FILE_NAME = "enigmacracker.log"
 ENV_FILE_NAME = "EnigmaCracker.env"
 WALLETS_FILE_NAME = "wallets_with_balance.txt"
+NUM_WALLETS_TO_TEST = 10000  # Number of wallets to test per second
 
 # Global counter for the number of wallets scanned
 wallets_scanned = 0
@@ -78,7 +80,7 @@ def update_cmd_title():
 def generate_seed_and_private_key():
     # Generate a 12-word BIP39 mnemonic
     mnemonic = Bip39MnemonicGenerator().FromWordsNumber(Bip39WordsNum.WORDS_NUM_12)
-    
+
     # Generate the seed from the mnemonic
     seed_bytes = Bip39SeedGenerator(mnemonic).Generate()
 
@@ -100,7 +102,7 @@ def bip44_BTC_seed_to_address(seed):
     bip44_chg_ctx = bip44_acc_ctx.Change(Bip44Changes.CHAIN_EXT)
     bip44_addr_ctx = bip44_chg_ctx.AddressIndex(0)
 
-    # Print the address
+    # Return the address
     return bip44_addr_ctx.PublicKey().ToAddress()
 
 
@@ -131,26 +133,40 @@ def write_to_file(seed, BTC_address, BTC_balance):
         logging.info(f"Written to file: {log_message}")
 
 
+def process_wallet(seed):
+    try:
+        BTC_address = bip44_BTC_seed_to_address(seed)
+        BTC_balance = check_BTC_balance(BTC_address)
+
+        logging.info(f"Seed: {seed}")
+        logging.info(f"BTC address: {BTC_address}")
+        logging.info(f"BTC balance: {BTC_balance} BTC")
+        logging.info("")
+
+        if BTC_balance > 0:
+            logging.info("(!) Wallet with balance found!")
+            write_to_file(seed, BTC_address, BTC_balance)
+
+    except Exception as e:
+        logging.error(f"Error processing wallet: {str(e)}")
+
+
 def main():
     global wallets_scanned
     try:
-        while True:
-            seed, btc_private_key = generate_seed_and_private_key()
-            BTC_address = bip44_BTC_seed_to_address(seed)
-            BTC_balance = check_BTC_balance(BTC_address)
+        with ProcessPoolExecutor() as executor:
+            futures = []
 
-            logging.info(f"Seed: {seed}")
-            logging.info(f"BTC address: {BTC_address}")
-            logging.info(f"BTC balance: {BTC_balance} BTC")
-            logging.info(f"BTC address private: {btc_private_key}")
-            logging.info("")
+            # Start testing wallets
+            while wallets_scanned < NUM_WALLETS_TO_TEST:
+                seed, _ = generate_seed_and_private_key()
+                futures.append(executor.submit(process_wallet, seed))
+                wallets_scanned += 1
+                update_cmd_title()
 
-            wallets_scanned += 1
-            update_cmd_title()
-
-            if BTC_balance > 0:
-                logging.info("(!) Wallet with balance found!")
-                write_to_file(seed, BTC_address, BTC_balance)
+            # Wait for all tasks to complete
+            for future in as_completed(futures):
+                future.result()
 
     except KeyboardInterrupt:
         logging.info("Program interrupted by user. Exiting...")
