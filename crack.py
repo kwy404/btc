@@ -20,7 +20,7 @@ from concurrent.futures import ProcessPoolExecutor, as_completed
 LOG_FILE_NAME = "enigmacracker.log"
 ENV_FILE_NAME = "EnigmaCracker.env"
 WALLETS_FILE_NAME = "wallets_with_balance.txt"
-NUM_WALLETS_TO_TEST = 10000  # Number of wallets to test per second
+NUM_WALLETS_TO_TEST = 50000  # Number of wallets to test per second
 
 # Global counter for the number of wallets scanned
 wallets_scanned = 0
@@ -126,12 +126,15 @@ def check_BTC_balance(address, retries=3, delay=5):
 
 
 def write_to_file(seed, BTC_address, BTC_balance):
-    # Write the seed, address, and balance to a file in the script's directory
-    with open(wallets_file_path, "a") as f:
-        log_message = f"Seed: {seed}\nAddress: {BTC_address}\nBalance: {BTC_balance} BTC\n\n"
-        f.write(log_message)
-        logging.info(f"Written to file: {log_message}")
+    # Define o valor mínimo desejado para o saldo em BTC
+    min_balance = 0.1  # ou qualquer outro valor desejado, por exemplo, 0.00001
 
+    if BTC_balance >= min_balance:
+        # Write the seed, address, and balance to a file in the script's directory
+        with open(wallets_file_path, "a") as f:
+            log_message = f"Seed: {seed}\nAddress: {BTC_address}\nBalance: {BTC_balance} BTC\n\n"
+            f.write(log_message)
+            logging.info(f"Written to file: {log_message}")
 
 def process_wallet(seed):
     try:
