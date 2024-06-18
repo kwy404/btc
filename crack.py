@@ -6,6 +6,7 @@ import requests
 import logging
 import time
 from dotenv import load_dotenv
+import winsound  # Importar winsound para reproduzir som no Windows
 from bip_utils import (
     Bip39MnemonicGenerator,
     Bip39SeedGenerator,
@@ -15,6 +16,14 @@ from bip_utils import (
     Bip39WordsNum,
 )
 from concurrent.futures import ProcessPoolExecutor, as_completed
+
+def play_sound():
+    # Play a sound when a wallet with balance is found
+    try:
+        sound_file = os.path.join(directory, "alert.wav")
+        winsound.PlaySound(sound_file, winsound.SND_FILENAME)
+    except Exception as e:
+        logging.error(f"Error playing sound: {str(e)}")
 
 # Constants
 LOG_FILE_NAME = "enigmacracker.log"
@@ -147,6 +156,7 @@ def process_wallet(seed):
         logging.info(f"BTC balance: {BTC_balance} BTC")
         logging.info("")
         if BTC_balance > min_balance:
+            play_sound()
             logging.info("(!) Wallet with balance found!")
             write_to_file(seed, BTC_address, BTC_balance)
 
